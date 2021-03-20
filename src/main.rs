@@ -1,4 +1,5 @@
 use std::time::Duration;
+use std::sync::Mutex;
 
 use image::{ ImageBuffer };
 
@@ -112,7 +113,7 @@ fn main() {
     let mut bar = if opts.progress {
         let mut b = ProgressBar::new(region.img_w as u64 * region.img_h as u64);
         b.set_max_refresh_rate(Some(Duration::from_millis(200)));
-        Some(b)
+        Some(Mutex::new(b))
     } else {
         None
     };
@@ -122,9 +123,9 @@ fn main() {
         .map(|i| {
             let x = i % region.img_w;
             let y = i / region.img_w;
-            //if let Some(ref mut bar) = bar {
-            //    bar.inc();
-            //}
+            if let Some(ref bar) = bar {
+                bar.lock().unwrap().inc();
+            }
 
             do_pixel(&region, opts.iterations, x, y)
         })
