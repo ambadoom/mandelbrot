@@ -95,6 +95,21 @@ fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> u8 {
     0
 }
 
+/// Generate the image
+fn generate<F>(region: &Region, iterations: usize, progress: F) -> Vec<u8>
+where F: Fn() + Sync {
+    (0..(region.img_w * region.img_h))
+        .into_par_iter()
+        .map(|i| {
+            let x = i % region.img_w;
+            let y = i / region.img_w;
+            progress();
+
+            do_pixel(&region, iterations, x, y)
+        })
+        .collect()
+}
+
 fn main() {
     let opts = Opts::parse();
     let region = Region {
@@ -108,26 +123,14 @@ fn main() {
 
     println!("Generating image...");
 
-    let mut bar = if opts.progress {
+    let pixels = if opts.progress {
         let mut b = ProgressBar::new(region.img_w as u64 * region.img_h as u64);
         b.set_max_refresh_rate(Some(Duration::from_millis(200)));
-        Some(Mutex::new(b))
+        let mb = Mutex::new(b);
+        generate(&region, opts.iterations, || { mb.lock().unwrap().inc(); })
     } else {
-        None
+        generate(&region, opts.iterations, || {})
     };
-
-    let pixels: Vec<u8> = (0..(region.img_w * region.img_h))
-        .into_par_iter()
-        .map(|i| {
-            let x = i % region.img_w;
-            let y = i / region.img_w;
-            if let Some(ref bar) = bar {
-                bar.lock().unwrap().inc();
-            }
-
-            do_pixel(&region, opts.iterations, x, y)
-        })
-        .collect();
 
     println!("Saving image...");
 
