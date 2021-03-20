@@ -6,6 +6,8 @@ use clap::Clap;
 
 use pbr::ProgressBar;
 
+use rayon::prelude::*;
+
 type Float = f64;
 type Pixel = image::Luma<u8>;
 
@@ -69,7 +71,7 @@ fn iteration_to_colour(iteration: usize) -> u8 {
 
 /// Compute a particular pixel for the final image
 #[inline]
-fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> Pixel {
+fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> u8 {
     let x = scale_convert(img_x, 0, r.img_w, r.real_min, r.real_max);
     let y = scale_convert(img_y, 0, r.img_h, r.im_min, r.im_max);
 
@@ -85,11 +87,13 @@ fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> Pixel {
         zi += y;
 
         if zr * zr + zi * zi > 4.0 {
-            return image::Luma([iteration_to_colour(i)]);
+            //return image::Luma([iteration_to_colour(i)]);
+            return iteration_to_colour(i);
         }
     }
 
-    image::Luma([0u8])
+    //image::Luma([0u8])
+    0
 }
 
 fn main() {
@@ -113,14 +117,21 @@ fn main() {
         None
     };
 
-    // Construct a new by repeated calls to the supplied closure.
-    let img = ImageBuffer::from_fn(region.img_w, region.img_h, |x, y| {
-        if let Some(ref mut bar) = bar {
-            bar.inc();
-        }
+    let pixels: Vec<u8> = (0..(region.img_w * region.img_h))
+        .into_par_iter()
+        .map(|i| {
+            let x = i % region.img_w;
+            let y = i / region.img_w;
+            //if let Some(ref mut bar) = bar {
+            //    bar.inc();
+            //}
 
-        do_pixel(&region, opts.iterations, x, y)
-    });
+            do_pixel(&region, opts.iterations, x, y)
+        })
+        .collect();
+
+    // Construct a new by repeated calls to the supplied closure.
+    let img = ImageBuffer::<Pixel, Vec<u8>>::from_raw(region.img_w, region.img_h, pixels).unwrap();
 
     println!("Saving image...");
     let result = img.save(opts.output);
