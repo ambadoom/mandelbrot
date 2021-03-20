@@ -1,13 +1,12 @@
 use std::time::Duration;
 
-use image;
 use image::{ ImageBuffer };
 
 use clap::Clap;
 
 use pbr::ProgressBar;
 
-type Float = f32;
+type Float = f64;
 type Pixel = image::Luma<u8>;
 
 #[derive(Clap)]
