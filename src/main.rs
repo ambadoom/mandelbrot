@@ -9,6 +9,7 @@ use pbr::ProgressBar;
 type Float = f64;
 type Pixel = image::Luma<u8>;
 
+/// Command line options
 #[derive(Clap)]
 #[clap(version="0.1.0", author="Louis Stagg")]
 struct Opts {
@@ -41,19 +42,7 @@ struct Opts {
     scale: Float,
 }
 
-#[inline]
-fn scale_convert(i: u32, imn: u32, imx: u32, omn: Float, omx: Float) -> Float {
-    let irange = imx - imn;
-    let i01 = (i - imn) as Float / irange as Float;
-    let orange = omx - omn;
-    i01 * orange + omn
-}
-
-#[inline]
-fn iteration_to_colour(iteration: usize) -> u8 {
-    100u8.saturating_add((iteration*100) as u8)
-}
-
+/// Needed values to convert image coords to points in complex plane
 struct Region {
     img_w: u32,
     img_h: u32,
@@ -63,6 +52,22 @@ struct Region {
     im_max: Float,
 }
 
+/// Convert a u32 between imn and imx to a Float beween omn and omx
+#[inline]
+fn scale_convert(i: u32, imn: u32, imx: u32, omn: Float, omx: Float) -> Float {
+    let irange = imx - imn;
+    let i01 = (i - imn) as Float / irange as Float;
+    let orange = omx - omn;
+    i01 * orange + omn
+}
+
+/// Decides how to colour points outside the set
+#[inline]
+fn iteration_to_colour(iteration: usize) -> u8 {
+    100u8.saturating_add((iteration*100) as u8)
+}
+
+/// Compute a particular pixel for the final image
 #[inline]
 fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> Pixel {
     let x = scale_convert(img_x, 0, r.img_w, r.real_min, r.real_max);
@@ -118,7 +123,11 @@ fn main() {
     });
 
     println!("Saving image...");
-    img.save(opts.output).unwrap();
+    let result = img.save(opts.output);
+    if let Err(e) = result {
+        println!("Failed to save image: {}", e);
+        std::process::exit(1);
+    }
 
     println!("Done.");
 
