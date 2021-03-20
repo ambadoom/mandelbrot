@@ -134,11 +134,18 @@ fn main() {
     };
 
     let elapsed = start.elapsed();
-    println!(
-        "Generated in {}ms ({} pixels/s)",
-        elapsed.as_millis(),
-        (region.img_w as u64 * region.img_h as u64 * 1000) / elapsed.as_millis() as u64
-    );
+    if elapsed.as_millis() > 0 {
+        println!(
+            "Generated in {}ms ({} pixels/s)",
+            elapsed.as_millis(),
+            (region.img_w as u64 * region.img_h as u64 * 1000) / elapsed.as_millis() as u64
+        );
+    } else {
+        println!(
+            "Generated in {}ms",
+            elapsed.as_millis(),
+        );
+    }
 
     println!("Saving image...");
 
