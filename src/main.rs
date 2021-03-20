@@ -1,7 +1,7 @@
 use std::time::Duration;
 use std::sync::Mutex;
 
-use image::{ ImageBuffer };
+use image::ColorType;
 
 use clap::Clap;
 
@@ -88,12 +88,10 @@ fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> u8 {
         zi += y;
 
         if zr * zr + zi * zi > 4.0 {
-            //return image::Luma([iteration_to_colour(i)]);
             return iteration_to_colour(i);
         }
     }
 
-    //image::Luma([0u8])
     0
 }
 
@@ -131,11 +129,9 @@ fn main() {
         })
         .collect();
 
-    // Construct a new by repeated calls to the supplied closure.
-    let img = ImageBuffer::<Pixel, Vec<u8>>::from_raw(region.img_w, region.img_h, pixels).unwrap();
-
     println!("Saving image...");
-    let result = img.save(opts.output);
+
+    let result = image::save_buffer(opts.output, &pixels, region.img_w, region.img_h, ColorType::L8);
     if let Err(e) = result {
         println!("Failed to save image: {}", e);
         std::process::exit(1);
