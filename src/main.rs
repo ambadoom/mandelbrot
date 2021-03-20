@@ -1,7 +1,7 @@
 use std::time::{Instant, Duration};
 use std::sync::Mutex;
 
-use image::ColorType;
+use image::{GrayImage, imageops::FilterType};
 
 use clap::Clap;
 
@@ -26,6 +26,10 @@ struct Opts {
     /// Resolution of the image (only supports square output for now)
     #[clap(long, default_value="1024")]
     resolution: u32,
+
+    /// Generate at a higher resolution and scale down
+    #[clap(long, default_value="2")]
+    supersample: u32,
 
     /// Display a progress bar
     #[clap(long, short)]
@@ -112,8 +116,8 @@ where F: Fn() + Sync {
 fn main() {
     let opts = Opts::parse();
     let region = Region {
-        img_w: opts.resolution,
-        img_h: opts.resolution,
+        img_w: opts.resolution * opts.supersample,
+        img_h: opts.resolution * opts.supersample,
         real_min: opts.real - opts.scale,
         real_max: opts.real + opts.scale,
         im_min: opts.imaginary - opts.scale,
@@ -149,7 +153,9 @@ fn main() {
 
     println!("Saving image...");
 
-    let result = image::save_buffer(opts.output, &pixels, region.img_w, region.img_h, ColorType::L8);
+    let img = GrayImage::from_vec(region.img_w, region.img_h, pixels).unwrap();
+    let img_ = image::imageops::resize(&img, opts.resolution, opts.resolution, FilterType::Triangle);
+    let result = img_.save(opts.output);
     if let Err(e) = result {
         println!("Failed to save image: {}", e);
         std::process::exit(1);
