@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::sync::Mutex;
 
 use image::ColorType;
@@ -123,6 +123,8 @@ fn main() {
 
     println!("Generating image...");
 
+    let start = Instant::now();
+
     let pixels = if opts.progress {
         let mut b = ProgressBar::new(region.img_w as u64 * region.img_h as u64);
         b.set_max_refresh_rate(Some(Duration::from_millis(200)));
@@ -131,6 +133,13 @@ fn main() {
     } else {
         generate(&region, opts.iterations, || {})
     };
+
+    let elapsed = start.elapsed();
+    println!(
+        "Generated in {}ms ({} pixels/s)",
+        elapsed.as_millis(),
+        (region.img_w as u64 * region.img_h as u64 * 1000) / elapsed.as_millis() as u64
+    );
 
     println!("Saving image...");
 
