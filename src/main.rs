@@ -112,7 +112,7 @@ fn main() {
     } else {
         None
     };
-    
+
     // Construct a new by repeated calls to the supplied closure.
     let img = ImageBuffer::from_fn(region.img_w, region.img_h, |x, y| {
         if let Some(ref mut bar) = bar {
@@ -130,5 +130,4 @@ fn main() {
     }
 
     println!("Done.");
-
 }
