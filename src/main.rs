@@ -10,7 +10,6 @@ use pbr::ProgressBar;
 use rayon::prelude::*;
 
 type Float = f64;
-type Pixel = image::Luma<u8>;
 
 /// Command line options
 #[derive(Clap)]
