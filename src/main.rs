@@ -67,15 +67,11 @@ fn scale_convert(i: u32, imn: u32, imx: u32, omn: Float, omx: Float) -> Float {
     i01 * orange + omn
 }
 
-/// Decides how to colour points outside the set
-#[inline]
-fn iteration_to_colour(iteration: usize) -> u8 {
-    100u8.saturating_add((iteration*100) as u8)
-}
+const ESCAPE: Float = (1<<16) as Float;
 
 /// Compute a particular pixel for the final image
 #[inline]
-fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> u8 {
+fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> f64 {
     let x = scale_convert(img_x, 0, r.img_w, r.real_min, r.real_max);
     let y = scale_convert(img_y, 0, r.img_h, r.im_min, r.im_max);
 
@@ -90,16 +86,22 @@ fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> u8 {
         zr += x;
         zi += y;
 
-        if zr * zr + zi * zi > 4.0 {
-            return iteration_to_colour(i);
+        if zr * zr + zi * zi > ESCAPE {
+            // Calculate adjusted iteration count
+            let log_z = (zr * zr + zi * zi).log2();
+            let log_2 = (2.0_f64).log2();
+            let nu = (log_z / log_2).log2() / log_2;
+            let iteration = i as Float + 1.0 - nu;
+            return iteration;
         }
     }
 
-    0
+    // Negative value signals point is in set
+    -1.0
 }
 
 /// Generate the image
-fn generate<F>(region: &Region, iterations: usize, progress: F) -> Vec<u8>
+fn generate<F>(region: &Region, iterations: usize, progress: F) -> Vec<f64>
 where F: Fn() + Sync {
     (0..(region.img_w * region.img_h))
         .into_par_iter()
@@ -109,6 +111,19 @@ where F: Fn() + Sync {
             progress();
 
             do_pixel(&region, iterations, x, y)
+        })
+        .collect()
+}
+
+fn colour(generated: &[f64]) -> Vec<u8> {
+    generated
+        .iter()
+        .map(|i| {
+            if *i == -1.0 {
+                0
+            } else {
+                *i as u8
+            }
         })
         .collect()
 }
@@ -128,7 +143,7 @@ fn main() {
 
     let start = Instant::now();
 
-    let pixels = if opts.progress {
+    let generated = if opts.progress {
         let mut b = ProgressBar::new(region.img_w as u64 * region.img_h as u64);
         b.set_max_refresh_rate(Some(Duration::from_millis(200)));
         let mb = Mutex::new(b);
@@ -150,6 +165,8 @@ fn main() {
             elapsed.as_millis(),
         );
     }
+
+    let pixels = colour(&generated);
 
     println!("Saving image...");
 
