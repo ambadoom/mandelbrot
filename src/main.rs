@@ -73,7 +73,7 @@ const ESCAPE: Float = (1<<16) as Float;
 #[inline]
 fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> f64 {
     let x = scale_convert(img_x, 0, r.img_w, r.real_min, r.real_max);
-    let y = scale_convert(img_y, 0, r.img_h, r.im_min, r.im_max);
+    let y = scale_convert(r.img_h - img_y, 0, r.img_h, r.im_min, r.im_max);
 
     let mut zr: Float = 0.0;
     let mut zi: Float = 0.0;
