@@ -14,3 +14,10 @@ rayon="1.5.*"
 
 [profile.dev]
 opt-level = 3
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "benchmark"
+harness = false
