@@ -1,7 +1,7 @@
 use std::time::{Instant, Duration};
 use std::sync::Mutex;
 
-use image::{GrayImage, imageops::FilterType};
+use image::{GrayImage, RgbImage, imageops::FilterType};
 
 use clap::Clap;
 
@@ -34,6 +34,10 @@ struct Opts {
     /// Display a progress bar
     #[clap(long, short)]
     progress: bool,
+
+    /// Disable colour in output
+    #[clap(long)]
+    grayscale: bool,
 
     /// Center of image real part
     #[clap(default_value="-0.5")]
@@ -68,6 +72,7 @@ fn scale_convert(i: u32, imn: u32, imx: u32, omn: Float, omx: Float) -> Float {
 }
 
 const ESCAPE: Float = (1<<16) as Float;
+const IN_SET: Float = -1.0;
 
 /// Compute a particular pixel for the final image
 #[inline]
@@ -97,7 +102,7 @@ fn do_pixel(r: &Region, iterations: usize, img_x: u32, img_y: u32) -> f64 {
     }
 
     // Negative value signals point is in set
-    -1.0
+    IN_SET
 }
 
 /// Generate the image
@@ -115,17 +120,30 @@ where F: Fn() + Sync {
         .collect()
 }
 
-fn colour(generated: &[f64]) -> Vec<u8> {
+fn colour_l(generated: &[f64]) -> Vec<u8> {
     generated
         .iter()
         .map(|i| {
-            if *i == -1.0 {
+            if *i == IN_SET {
                 0
             } else {
                 *i as u8
             }
         })
         .collect()
+}
+
+fn colour_rgb(generated: &[f64]) -> Vec<u8> {
+    let mut out = Vec::with_capacity(generated.len() * 3);
+    for i in generated.iter() {
+        if *i == IN_SET {
+            out.extend(&[0, 0, 0])
+        } else {
+            let a = *i;
+            out.extend(&[0, 0, a as u8])
+        }
+    }
+    out
 }
 
 fn main() {
@@ -166,16 +184,42 @@ fn main() {
         );
     }
 
-    let pixels = colour(&generated);
-
     println!("Saving image...");
 
-    let img = GrayImage::from_vec(region.img_w, region.img_h, pixels).unwrap();
-    let img_ = image::imageops::resize(&img, opts.resolution, opts.resolution, FilterType::Triangle);
-    let result = img_.save(opts.output);
-    if let Err(e) = result {
-        println!("Failed to save image: {}", e);
-        std::process::exit(1);
+    if opts.grayscale {
+        let img = GrayImage::from_vec(
+            region.img_w,
+            region.img_h,
+            colour_l(&generated)
+        ).unwrap();
+        let img_ = image::imageops::resize(
+            &img,
+            opts.resolution,
+            opts.resolution,
+            FilterType::Triangle
+        );
+        let result = img_.save(opts.output);
+        if let Err(e) = result {
+            println!("Failed to save image: {}", e);
+            std::process::exit(1);
+        }
+    } else {
+        let img = RgbImage::from_vec(
+            region.img_w,
+            region.img_h,
+            colour_rgb(&generated)
+        ).unwrap();
+        let img_ = image::imageops::resize(
+            &img,
+            opts.resolution,
+            opts.resolution,
+            FilterType::Triangle
+        );
+        let result = img_.save(opts.output);
+        if let Err(e) = result {
+            println!("Failed to save image: {}", e);
+            std::process::exit(1);
+        }
     }
 
     println!("Done.");
